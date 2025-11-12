@@ -1,0 +1,131 @@
+--- Ortalama Sipariş Değeri (AOV): Toplam gelir / Toplam sipariş sayısı
+
+SELECT
+  round((SUM(t1.payment_value) / COUNT(DISTINCT t1.order_id)),2) AS average_order_value
+FROM `valued-context-474807-t7`.`OLIST`.`olist_order_payments_dataset` AS t1;
+--AOV: 360.47 TL
+
+SELECT
+  round(SUM(t1.payment_value),2)  AS total_payment_value
+FROM `valued-context-474807-t7`.`OLIST`.`olist_order_payments_dataset` AS t1;
+-- toplam gelir 35845470.24
+
+SELECT
+   COUNT(DISTINCT t1.order_id) AS total_order_countr
+FROM `valued-context-474807-t7`.`OLIST`.`olist_order_payments_dataset` AS t1;
+-- toplam sipariş sayısı :99440
+
+
+--- Satın Alma Sıklığı: Toplam sipariş sayısı / Toplam müşteri sayısı
+SELECT
+   COUNT(DISTINCT t1.order_id) AS total_order_countr
+   ,COUNT(DISTINCT t2.customer_id) AS total_customer_countr
+   ,round((COUNT(DISTINCT t1.order_id) / COUNT(DISTINCT t2.customer_id)),2) AS satinAlma
+FROM `OLIST.olist_orders_dataset` AS t1 , `valued-context-474807-t7`.`OLIST`.`olist_customers_dataset` AS t2
+
+SELECT
+  COUNT(DISTINCT t1.order_id) AS total_order_count,
+  (SELECT COUNT(DISTINCT customer_id) FROM `valued-context-474807-t7.OLIST.olist_customers_dataset`) AS total_customer_count,
+  ROUND(COUNT(DISTINCT t1.order_id) / 
+        (SELECT COUNT(DISTINCT customer_id) FROM `valued-context-474807-t7.OLIST.olist_customers_dataset`), 2) AS satin_alma_sikligi
+FROM `OLIST.olist_orders_dataset` AS t1;
+
+SELECT
+  ROUND(AVG(order_count), 2) AS satin_alma_sikligi
+FROM (
+  SELECT customer_id, COUNT(order_id) AS order_count
+  FROM `OLIST.olist_orders_dataset`
+  GROUP BY customer_id
+);
+
+SELECT COUNT(DISTINCT customer_id) AS unique_customer_count
+FROM `OLIST.olist_orders_dataset`;
+--her müşteri 1 kere satın alım yapmış
+
+SELECT ROUND(AVG(order_count), 2) AS satin_alma_sikligi FROM ( SELECT customer_id, COUNT(order_id) AS order_count FROM OLIST.olist_orders_dataset GROUP BY customer_id )
+SELECT customer_id, COUNT(order_id) AS order_count
+FROM `OLIST.olist_orders_dataset`
+GROUP BY customer_id
+ORDER BY order_count DESC;
+-----------------------------------
+SELECT customer_id, COUNT(order_id) AS order_count
+FROM `OLIST.olist_orders_dataset`
+GROUP BY customer_id
+ORDER BY order_count DESC;
+--her müşteri sadece 1 sipariş vermiş
+
+-- Müşteri Ömrü: Ortalama bir müşterinin sizinle kaç yıl kaldığı 
+select 
+
+
+
+--müşterilerin kazandırdığı ortalama fiyat değeri
+SELECT
+  customer_id,
+  AVG(price) AS average_order_value,
+  COUNT(DISTINCT order_id) AS total_orders,
+  AVG(price) * COUNT(DISTINCT order_id) AS lifetime_value
+FROM
+  your AS o
+JOIN
+ `OLIST.olist_order_items_dataset` AS oi
+ON
+  o.order_id = oi.order_id
+GROUP BY
+  customer_id
+ORDER BY
+  lifetime_value DESC;
+
+  ---en yüksek değerli müşteriler
+  with  ordersCount as 
+  (
+    SELECT
+  t1.customer_id as customer
+  ,t2.order_id as orders
+  ,count(distinct t2.order_id) as total
+  from `OLIST.olist_customers_dataset` as t1 
+  join `OLIST.olist_orders_dataset` as t2
+on t1.customer_id = t2.customer_id 
+  group by t1.customer_id
+
+  )
+select count(*) 
+from ordersCount as t1 
+join `OLIST.olist_order_items_dataset` as t2
+on t1.orders = t2.order_id
+
+--en yüksek değerli müşteriler (ilk çözüm)
+WITH ordersCount AS (
+  SELECT
+    t1.customer_id AS customer,
+    t2.order_id AS orders,
+    COUNT(DISTINCT t2.order_id) AS total
+  FROM `OLIST.olist_customers_dataset` AS t1
+  JOIN `OLIST.olist_orders_dataset` AS t2
+    ON t1.customer_id = t2.customer_id
+  GROUP BY t1.customer_id, t2.order_id
+)
+SELECT t1.orders,
+t1.customer,
+t2.price
+FROM ordersCount AS t1
+JOIN `OLIST.olist_order_items_dataset` AS t2
+  ON t1.orders = t2.order_id
+  order by t2.price desc
+  limit 10;
+--076d1555fb53a89b0ef4d529e527a0f6	f08306b95370e8d5f0d97b71229284b6	160190.0
+SELECT
+  customer_id,
+  SUM(price) AS total_spent
+FROM
+  your_dataset.orders AS o
+JOIN
+  your_dataset.order_items AS oi
+ON
+  o.order_id = oi.order_id
+GROUP BY
+  customer_id
+ORDER BY
+  total_spent DESC
+LIMIT
+  10;
