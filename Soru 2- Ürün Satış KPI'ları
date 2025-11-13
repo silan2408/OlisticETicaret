@@ -1,0 +1,41 @@
+-- Olistin en çok satan ürünleri nelerdir?
+
+SELECT
+  oi.product_id,
+  p.product_category_name,
+  COUNT(order_id) AS total_orders
+FROM
+  `OLIST.olist_order_items_dataset` oi join `OLIST.olist_products_dataset` p on oi.product_id= p.product_id
+GROUP BY
+  oi.product_id, p.product_category_name
+ORDER BY
+  total_orders DESC
+LIMIT
+  10
+
+  -- Olistte genel gelir trendleri nelerdir?
+SELECT
+    EXTRACT(YEAR FROM o.order_purchase_timestamp) AS order_year,
+    COALESCE(p.product_category_name, 'Unknown') AS product_category_name,
+    ROUND(SUM(oi.price + oi.freight_value), 2) AS total_revenue
+FROM `OLIST.olist_orders_dataset` o
+JOIN `OLIST.olist_order_items_dataset` oi ON o.order_id = oi.order_id
+JOIN  `OLIST.olist_products_dataset` p ON oi.product_id = p.product_id
+WHERE o.order_status = 'delivered'
+GROUP BY EXTRACT(YEAR FROM o.order_purchase_timestamp), COALESCE(p.product_category_name, 'Unknown')
+ORDER BY order_year, total_revenue DESC;
+
+/*Hangi ürün kategorileri en yüksek geliri sağlıyor?(üstteki koddan sadece order year 
+kısmını çıkardığımızda kategori bazında gelir hesaplanmış oluyor )*/
+SELECT
+    COALESCE(p.product_category_name, 'Unknown') AS product_category_name,
+    ROUND(SUM(oi.price + oi.freight_value), 2) AS total_revenue
+FROM `OLIST.olist_orders_dataset` o
+JOIN `OLIST.olist_order_items_dataset` oi ON o.order_id = oi.order_id
+JOIN  `OLIST.olist_products_dataset` p ON oi.product_id = p.product_id
+WHERE o.order_status = 'delivered'
+GROUP BY  COALESCE(p.product_category_name, 'Unknown')
+ORDER BY  total_revenue DES
+
+
+
