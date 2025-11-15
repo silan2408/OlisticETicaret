@@ -1,0 +1,78 @@
+--Müşteri Yorumları ve Memnuniyeti:
+--1)Olist’in yorumlara dayalı genel müşteri memnuniyet puanı nedir?
+--2)Ürün kategorileri ile yorum puanları arasında bir korelasyon var mı?
+--3)Müşteriler yorumlarında belirli geri bildirimler bırakıyor mu?
+
+
+--1
+select *
+ from `OLIST.olist_order_reviews_dataset`
+ limit 50
+
+ -- max puan: 5
+ 
+select max(review_score)
+ from `OLIST.olist_order_reviews_dataset`
+ 
+-- min puan: 1
+
+select min(review_score)
+ from `OLIST.olist_order_reviews_dataset`
+
+ -- toplam yorum sayısı 98410
+select count(distinct(review_id))
+ from `OLIST.olist_order_reviews_dataset`
+ 
+select count(*) --99224
+ from `OLIST.olist_order_reviews_dataset`
+
+-- review_score boş olan var mı
+ 
+select * --
+ from `OLIST.olist_order_reviews_dataset`
+-- where order_id is null (boş yok)
+--where review_score is null (boş yok)
+--where review_answer_timestamp is null --(boş yok)
+--where review_id is null --(boş yok)
+--where review_answer_timestamp is null --(boş yok)
+
+--Temizlik analizi sonucunda primary key olan review_id de çoklamalar tespit edildi
+--toplam puan 402379
+SELECT SUM(review_score) AS toplam_puan
+FROM (
+  SELECT DISTINCT review_id, review_score
+  FROM `OLIST.olist_order_reviews_dataset`
+)
+--ortalama puan 4,088801951021238
+
+SELECT AVG(review_score) AS genel_memnuniyet_puani
+FROM (
+  SELECT DISTINCT review_id, review_score
+  FROM `OLIST.olist_order_reviews_dataset`
+)--4.0888019510212406
+---
+
+---soru 2
+
+SELECT 
+  product_category_name,
+  AVG(review_score) AS ortalama_puan
+FROM (
+ SELECT 
+  p.product_category_name,
+  r.review_score
+FROM `OLIST.olist_order_reviews_dataset` r
+JOIN `OLIST.olist_order_items_dataset` i ON r.order_id = i.order_id
+JOIN `OLIST.olist_products_dataset` p ON i.product_id = p.product_id
+)
+GROUP BY product_category_name
+ORDER BY ortalama_puan DESC
+
+--en yüksek 1	cds_dvds_musicais	4.6428571428571423
+--en düşük 74	seguros_e_servicos	2.5
+
+--soru 3
+select *
+from `OLIST.olist_order_reviews_dataset`
+where 
+--bu soru iptal mesaj alanı yok 
