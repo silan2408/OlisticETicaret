@@ -1,15 +1,50 @@
 -- Olistin en çok satan ürünleri nelerdir?
 
+--temizlik
+--önceki KPI'lar için 
+-- Remove duplicate rows from the orders table
+CREATE OR REPLACE TABLE `OLIST.olist_order_items_dataset_fixed` AS
+SELECT * FROM `OLIST.olist_order_items_dataset`;
+
+
+DELETE FROM `OLIST.olist_order_items_dataset_fixed` T
+WHERE T.order_id IN (
+  SELECT order_id
+  FROM (
+    SELECT order_id
+    FROM `OLIST.olist_order_items_dataset_fixed`
+    GROUP BY order_id
+    HAVING COUNT(*) > 1
+  )
+);
+---çoklayan id ler siliniyor olist_products_dataset
+-- Remove duplicate rows from the orders table
+CREATE OR REPLACE TABLE `OLIST.olist_products_dataset_fixed` AS
+SELECT * FROM `OLIST.olist_products_dataset`;
+
+
+DELETE FROM `OLIST.olist_products_dataset_fixed` T
+WHERE T.product_id IN (
+  SELECT product_id
+  FROM (
+    SELECT product_id
+    FROM `OLIST.olist_products_dataset_fixed`
+    GROUP BY product_id
+    HAVING COUNT(*) > 1
+  )
+);
+
+--sonuç
 SELECT
   oi.product_id,
   p.product_category_name,
   COUNT(order_id) AS total_orders
 FROM
-  `OLIST.olist_order_items_dataset` oi join `OLIST.olist_products_dataset` p on oi.product_id= p.product_id
+  `OLIST.olist_order_items_dataset_fixed` oi join `OLIST.olist_products_dataset_fixed` p on oi.product_id= p.product_id
 GROUP BY
   oi.product_id, p.product_category_name
 ORDER BY
-  total_orders DESC
+  total_orders asc
 LIMIT
   10
 
@@ -18,12 +53,33 @@ SELECT
     EXTRACT(YEAR FROM o.order_purchase_timestamp) AS order_year,
     COALESCE(p.product_category_name, 'Unknown') AS product_category_name,
     ROUND(SUM(oi.price + oi.freight_value), 2) AS total_revenue
-FROM `OLIST.olist_orders_dataset` o
-JOIN `OLIST.olist_order_items_dataset` oi ON o.order_id = oi.order_id
-JOIN  `OLIST.olist_products_dataset` p ON oi.product_id = p.product_id
+FROM `OLIST.olist_orders_dataset_fixed` o
+JOIN `OLIST.olist_order_items_dataset_fixed` oi ON o.order_id = oi.order_id
+JOIN  `OLIST.olist_products_dataset_fixed` p ON oi.product_id = p.product_id
 WHERE o.order_status = 'delivered'
 GROUP BY EXTRACT(YEAR FROM o.order_purchase_timestamp), COALESCE(p.product_category_name, 'Unknown')
 ORDER BY order_year, total_revenue DESC;
+
+
+SELECT
+  EXTRACT(YEAR FROM o.order_purchase_timestamp) AS order_year,
+  ROUND(SUM(oi.price + oi.freight_value), 2) AS total_revenue
+FROM `OLIST.olist_orders_dataset_fixed` o
+JOIN `OLIST.olist_order_items_dataset_fixed` oi ON o.order_id = oi.order_id
+WHERE o.order_status = 'delivered'
+GROUP BY order_year
+ORDER BY order_year;
+
+
+SELECT
+  EXTRACT(YEAR FROM o.order_purchase_timestamp) AS order_year,
+  EXTRACT(MONTH FROM o.order_purchase_timestamp) AS order_month,
+  ROUND(SUM(oi.price + oi.freight_value), 2) AS total_revenue
+FROM `OLIST.olist_orders_dataset_fixed` o
+JOIN `OLIST.olist_order_items_dataset_fixed` oi ON o.order_id = oi.order_id
+WHERE o.order_status = 'delivered'
+GROUP BY order_year, order_month
+ORDER BY order_year, order_month;
 
 /*Hangi ürün kategorileri en yüksek geliri sağlıyor?(üstteki koddan sadece order year 
 kısmını çıkardığımızda kategori bazında gelir hesaplanmış oluyor )*/
