@@ -1,33 +1,32 @@
 --Müşteri Yorumları ve Memnuniyeti:
---1)Olist’in yorumlara dayalı genel müşteri memnuniyet puanı nedir?
---2)Ürün kategorileri ile yorum puanları arasında bir korelasyon var mı?
---3)Müşteriler yorumlarında belirli geri bildirimler bırakıyor mu?
+--Olist’in yorumlara dayalı genel müşteri memnuniyet puanı nedir?
+--Ürün kategorileri ile yorum puanları arasında bir korelasyon var mı?
+--Müşteriler yorumlarında belirli geri bildirimler bırakıyor mu?
 
+--Soru 1
+--Adım 1: kullanılacak tabloların temizliği ve analizi
 
---1
+--tabloya genel bakış
 select *
  from `OLIST.olist_order_reviews_dataset`
  limit 50
 
  -- max puan: 5
- 
 select max(review_score)
  from `OLIST.olist_order_reviews_dataset`
  
 -- min puan: 1
-
 select min(review_score)
  from `OLIST.olist_order_reviews_dataset`
 
- -- toplam yorum sayısı 98410
+ -- toplam yorum sayısı 98410, review_id çoklamış
 select count(distinct(review_id))
  from `OLIST.olist_order_reviews_dataset`
- 
 select count(*) --99224
  from `OLIST.olist_order_reviews_dataset`
 
+
 -- review_score boş olan var mı
- 
 select * --
  from `OLIST.olist_order_reviews_dataset`
 -- where order_id is null (boş yok)
@@ -37,6 +36,7 @@ select * --
 --where review_answer_timestamp is null --(boş yok)
 
 --Temizlik analizi sonucunda primary key olan review_id de çoklamalar tespit edildi
+
 --toplam puan 402379
 SELECT SUM(review_score) AS toplam_puan
 FROM (
@@ -45,25 +45,93 @@ FROM (
 )
 --ortalama puan 4,088801951021238
 
-SELECT AVG(review_score) AS genel_memnuniyet_puani
+SELECT round(AVG(review_score),2) AS genel_memnuniyet_puani
 FROM (
   SELECT DISTINCT review_id, review_score
   FROM `OLIST.olist_order_reviews_dataset`
 )--4.0888019510212406
----
 
----soru 2
+---çoklayan review id ler siliniyor
+-- Remove duplicate rows from the orders table
+CREATE OR REPLACE TABLE `OLIST.olist_order_reviews_dataset_fixed` AS
+SELECT * FROM `OLIST.olist_order_reviews_dataset`;
+
+
+DELETE FROM `OLIST.olist_order_reviews_dataset_fixed` T
+WHERE T.review_id IN (
+  SELECT review_id
+  FROM (
+    SELECT review_id
+    FROM `OLIST.olist_order_reviews_dataset_fixed`
+    GROUP BY review_id
+    HAVING COUNT(*) > 1
+  )
+);
+
+--gerçekten silinmiş mi?
+select count(distinct(review_id))--97621
+ from `OLIST.olist_order_reviews_dataset_fixed`
+select count(*) --97621
+ from `OLIST.olist_order_reviews_dataset_fixed`
+
+--sipariş statülerine göre puan analizi
+SELECT
+  t2.order_status,
+  round(AVG(t1.review_score),2) AS avg_review_score
+FROM `OLIST.olist_order_reviews_dataset_fixed` t1
+JOIN `OLIST.olist_orders_dataset` t2
+USING(order_id)
+GROUP BY t2.order_status;
+
+
+----
+--soru 2-)
+
+--temizlik
+---çoklayan id ler siliniyor olist_order_items_dataset
+-- Remove duplicate rows from the orders table
+CREATE OR REPLACE TABLE `OLIST.olist_order_items_dataset_fixed` AS
+SELECT * FROM `OLIST.olist_order_items_dataset`;
+
+
+DELETE FROM `OLIST.olist_order_items_dataset_fixed` T
+WHERE T.order_id IN (
+  SELECT order_id
+  FROM (
+    SELECT order_id
+    FROM `OLIST.olist_order_items_dataset_fixed`
+    GROUP BY order_id
+    HAVING COUNT(*) > 1
+  )
+);
+---çoklayan id ler siliniyor olist_products_dataset
+-- Remove duplicate rows from the orders table
+CREATE OR REPLACE TABLE `OLIST.olist_products_dataset_fixed` AS
+SELECT * FROM `OLIST.olist_products_dataset`;
+
+
+DELETE FROM `OLIST.olist_products_dataset_fixed` T
+WHERE T.product_id IN (
+  SELECT product_id
+  FROM (
+    SELECT product_id
+    FROM `OLIST.olist_products_dataset_fixed`
+    GROUP BY product_id
+    HAVING COUNT(*) > 1
+  )
+);
+
 
 SELECT 
-  product_category_name,
-  AVG(review_score) AS ortalama_puan
+  product_category_name as category_name,
+  round(AVG(review_score),2) AS ortalama_puan
 FROM (
  SELECT 
   p.product_category_name,
   r.review_score
-FROM `OLIST.olist_order_reviews_dataset` r
-JOIN `OLIST.olist_order_items_dataset` i ON r.order_id = i.order_id
-JOIN `OLIST.olist_products_dataset` p ON i.product_id = p.product_id
+FROM `OLIST.olist_order_reviews_dataset_fixed` r
+JOIN `OLIST.olist_order_items_dataset_fixed` i ON r.order_id = i.order_id
+JOIN `OLIST.olist_products_dataset_fixed` p ON i.product_id = p.product_id
 )
 GROUP BY product_category_name
 ORDER BY ortalama_puan DESC
@@ -75,4 +143,6 @@ ORDER BY ortalama_puan DESC
 select *
 from `OLIST.olist_order_reviews_dataset`
 where 
---bu soru iptal mesaj alanı yok 
+--bu soru iptal oldu çünkü mesaj alanı yok 
+
+
